@@ -144,7 +144,7 @@ netsh interface ipv6 add dns "$interfaceName" $dnsConfig.IPv6_2 validate=no > $n
 Write-Host "`nCleaning DNS cache..." -ForegroundColor Yellow
 ipconfig /flushdns > $null
 
-Write-Host "`nDNS succesfully configured for $selectedDNS!`n" -ForegroundColor Green
+Write-Host "`nDNS successfully configured for $selectedDNS!`n" -ForegroundColor Green
 Write-Host "Primary   IPv4: $($dnsConfig.IPv4_1)"
 Write-Host "Secondary IPv4: $($dnsConfig.IPv4_2)"
 Write-Host "Primary   IPv6: $($dnsConfig.IPv6_1)"
