@@ -1,4 +1,4 @@
 # Advanced DNS Changer for Windows
 
-![image](https://github.com/user-attachments/assets/aac0de94-b989-466d-8846-e9760b6fbb7f)
+<img width="513" height="776" alt="image" src="https://github.com/user-attachments/assets/b809b6dd-b9d4-48cf-923e-29cd0ef791f9" />
 
