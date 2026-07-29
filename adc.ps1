@@ -1,7 +1,3 @@
-chcp 65001 > $null
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$host.UI.RawUI.WindowTitle = "Advanced DNS Changer"
-
 # Advanced DNS Changer
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
@@ -10,6 +6,15 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
     exit
 }
+
+
+chcp 65001 > $null
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$host.UI.RawUI.WindowTitle = "Advanced DNS Changer"
+$size = $host.UI.RawUI.WindowSize
+$size.Width = 40
+$host.UI.RawUI.WindowSize = $size
+
 
 $interfaceName = (Get-NetConnectionProfile | Where-Object { $_.IPv4Connectivity -eq 'Internet' -or $_.IPv6Connectivity -eq 'Internet' }).InterfaceAlias
 if (-not $interfaceName) {
@@ -20,6 +25,7 @@ if (-not $interfaceName) {
 Write-Host "Interface em uso: $interfaceName" -ForegroundColor Cyan
 
 $dnsServers = @{
+    "Default" = $null
     "Google" = @{
         IPv4_1 = "8.8.8.8"
         IPv4_2 = "8.8.4.4"
@@ -74,6 +80,22 @@ $dnsServers = @{
         IPv6_1 = "2a07:a8c0::f2:b79d"
         IPv6_2 = "2a07:a8c1::f2:b79d"
     }
+    "CleanBrowsing" = @{
+        IPv4_1 = "185.228.168.9"
+        IPv4_2 = "185.228.169.9"
+        IPv6_1 = "2a0d:2a00:1::2"
+        IPv6_2 = "2a0d:2a00:2::2"
+    }
+    "ControlD" = @{
+        IPv4_1 = "76.76.2.3"
+        IPv4_2 = "76.76.10.3"
+        IPv6_1 = "2606:1a40::3"
+        IPv6_2 = "2606:1a40:1::3"
+    }
+    "Mullvad" = @{
+        IPv4_1 = "194.242.2.4"
+        IPv6_1 = "2a07:e340::4"
+    }
 }
 
 function Show-Menu {
@@ -90,10 +112,10 @@ function Show-Menu {
 
     while ($true) {
         
-        Write-Host "+------------------------------+" -ForegroundColor Yellow
-        Write-Host "| Advanced DNS Changer v1.0.0  |" -ForegroundColor Yellow
-        Write-Host "|   github.com/terremoth/adc   |" -ForegroundColor Yellow
-        Write-Host "+------------------------------+" -ForegroundColor Yellow
+        Write-Host "+-------------------------------------+" -ForegroundColor Yellow
+        Write-Host "|     Advanced DNS Changer v1.0.0     |" -ForegroundColor Yellow
+        Write-Host "| by https://github.com/terremoth/adc |" -ForegroundColor Yellow
+        Write-Host "+-------------------------------------+" -ForegroundColor Yellow
         Write-Host "`n  Select the desired DNS:`n" -ForegroundColor Cyan
 
         for ($i = 0; $i -lt $choices.Count; $i++) {
@@ -129,26 +151,55 @@ function Show-Menu {
 }
 
 $selectedDNS = Show-Menu
+
+if ($selectedDNS -eq "Default") {
+
+    Write-Host "`nRestoring automatic DNS (DHCP)..." -ForegroundColor Yellow
+
+    netsh interface ipv4 set dnsservers "$interfaceName" source=dhcp > $null
+    netsh interface ipv6 set dnsservers "$interfaceName" source=dhcp > $null
+
+    ipconfig /flushdns > $null
+
+    Write-Host "`nDNS restored to automatic (DHCP) successfully!" -ForegroundColor Green
+
+    Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+    $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+
+    exit
+}
+
+
 $dnsConfig = $dnsServers[$selectedDNS]
 
 Write-Host "`nConfiguring DNS for $selectedDNS..." -ForegroundColor Yellow
 
 # Configurar DNS IPv4
 netsh interface ipv4 set dns "$interfaceName" static $dnsConfig.IPv4_1 primary validate=no > $null
-netsh interface ipv4 add dns "$interfaceName" $dnsConfig.IPv4_2 validate=no > $null
+Write-Host "Primary   IPv4: $($dnsConfig.IPv4_1)"
+
+if ($dnsConfig.IPv4_2) {
+    netsh interface ipv4 add dns "$interfaceName" $dnsConfig.IPv4_2 validate=no > $null
+    Write-Host "Secondary IPv4: $($dnsConfig.IPv4_2)"
+}
 
 # Configurar DNS IPv6
-netsh interface ipv6 set dns "$interfaceName" static $dnsConfig.IPv6_1 primary validate=no > $null
-netsh interface ipv6 add dns "$interfaceName" $dnsConfig.IPv6_2 validate=no > $null
+
+if ($dnsConfig.IPv6_1) {
+    netsh interface ipv6 set dns "$interfaceName" static $dnsConfig.IPv6_1 primary validate=no > $null
+    Write-Host "Primary   IPv6: $($dnsConfig.IPv6_1)"
+}
+
+if ($dnsConfig.IPv6_2) {
+    netsh interface ipv6 add dns "$interfaceName" $dnsConfig.IPv6_2 validate=no > $null
+    Write-Host "Secondary IPv6: $($dnsConfig.IPv6_2)"
+}
+
 
 Write-Host "`nCleaning DNS cache..." -ForegroundColor Yellow
 ipconfig /flushdns > $null
 
 Write-Host "`nDNS successfully configured for $selectedDNS!`n" -ForegroundColor Green
-Write-Host "Primary   IPv4: $($dnsConfig.IPv4_1)"
-Write-Host "Secondary IPv4: $($dnsConfig.IPv4_2)"
-Write-Host "Primary   IPv6: $($dnsConfig.IPv6_1)"
-Write-Host "Secondary IPv6: $($dnsConfig.IPv6_2)"
 
 Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
 $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
